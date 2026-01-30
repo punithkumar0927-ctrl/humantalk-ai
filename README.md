@@ -1,22 +1,14 @@
-# Welcome to your Lovable project
+# HumanTalk AI - AI-Powered Interview Platform
 
-## Project info
+## About the Project
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+HumanTalk AI is an advanced interview platform that uses artificial intelligence to conduct human-like interviews, helping companies screen candidates efficiently while maintaining ethical standards.
 
-## How can I edit this code?
+## Getting Started
 
-There are several ways of editing your application.
+You can run this application locally using your preferred IDE or development environment.
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+**Local Development Setup**
 
 The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
@@ -50,7 +42,7 @@ npm run dev
 - Click on "New codespace" to launch a new Codespace environment.
 - Edit files directly within the Codespace and commit and push your changes once you're done.
 
-## What technologies are used for this project?
+## Technologies Used
 
 This project is built with:
 
@@ -59,15 +51,16 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
+- Supabase
 
-## How can I deploy this project?
+## Deployment
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+Deploy this project to your preferred hosting platform such as Vercel, Netlify, or Render.
 
-## Can I connect a custom domain to my Lovable project?
+## Features
 
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- AI-powered human-like interviews
+- Ethical screening with human oversight
+- HR handoff integration
+- Real-time candidate evaluation
+- Detailed reporting and analytics
