@@ -1,9 +1,17 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Play, ArrowRight, Sparkles } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import InterviewTypeSelector from "./InterviewTypeSelector";
+import DemoVideoModal from "./DemoVideoModal";
 
 const Hero = () => {
+  const [isDemoOpen, setIsDemoOpen] = useState(false);
+  const navigate = useNavigate();
+
   return (
+    <>
+      <DemoVideoModal isOpen={isDemoOpen} onClose={() => setIsDemoOpen(false)} />
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-soft">
       {/* Background elements */}
       <div className="absolute inset-0 overflow-hidden">
@@ -37,11 +45,21 @@ const Hero = () => {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16 animate-fade-up" style={{ animationDelay: "0.3s" }}>
-            <Button variant="hero" size="xl" className="group">
+            <Button 
+              variant="hero" 
+              size="xl" 
+              className="group"
+              onClick={() => navigate("/interview")}
+            >
               Start Your Interview
               <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
             </Button>
-            <Button variant="heroOutline" size="xl" className="group">
+            <Button 
+              variant="heroOutline" 
+              size="xl" 
+              className="group"
+              onClick={() => setIsDemoOpen(true)}
+            >
               <Play className="w-5 h-5" />
               Watch Demo
             </Button>
@@ -57,6 +75,7 @@ const Hero = () => {
       {/* Bottom gradient fade */}
       <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent" />
     </section>
+    </>
   );
 };
 
