@@ -14,7 +14,163 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      interview_messages: {
+        Row: {
+          content: string
+          id: string
+          interview_id: string
+          role: string
+          timestamp: string
+        }
+        Insert: {
+          content: string
+          id?: string
+          interview_id: string
+          role: string
+          timestamp?: string
+        }
+        Update: {
+          content?: string
+          id?: string
+          interview_id?: string
+          role?: string
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_messages_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "interviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interview_reports: {
+        Row: {
+          behavioral_fit_feedback: string | null
+          behavioral_fit_score: number | null
+          communication_feedback: string | null
+          communication_score: number | null
+          consistency_flag: boolean | null
+          created_at: string
+          engagement_level: string | null
+          gaze_deviation_count: number | null
+          growth_areas: string[] | null
+          hr_notified_at: string | null
+          id: string
+          interview_id: string
+          overall_score: number | null
+          passed_to_hr: boolean | null
+          problem_solving_feedback: string | null
+          problem_solving_score: number | null
+          recommendation: string | null
+          strengths: string[] | null
+          summary: string | null
+        }
+        Insert: {
+          behavioral_fit_feedback?: string | null
+          behavioral_fit_score?: number | null
+          communication_feedback?: string | null
+          communication_score?: number | null
+          consistency_flag?: boolean | null
+          created_at?: string
+          engagement_level?: string | null
+          gaze_deviation_count?: number | null
+          growth_areas?: string[] | null
+          hr_notified_at?: string | null
+          id?: string
+          interview_id: string
+          overall_score?: number | null
+          passed_to_hr?: boolean | null
+          problem_solving_feedback?: string | null
+          problem_solving_score?: number | null
+          recommendation?: string | null
+          strengths?: string[] | null
+          summary?: string | null
+        }
+        Update: {
+          behavioral_fit_feedback?: string | null
+          behavioral_fit_score?: number | null
+          communication_feedback?: string | null
+          communication_score?: number | null
+          consistency_flag?: boolean | null
+          created_at?: string
+          engagement_level?: string | null
+          gaze_deviation_count?: number | null
+          growth_areas?: string[] | null
+          hr_notified_at?: string | null
+          id?: string
+          interview_id?: string
+          overall_score?: number | null
+          passed_to_hr?: boolean | null
+          problem_solving_feedback?: string | null
+          problem_solving_score?: number | null
+          recommendation?: string | null
+          strengths?: string[] | null
+          summary?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_reports_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: true
+            referencedRelation: "interviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interviews: {
+        Row: {
+          behavior_flags: Json | null
+          completed_at: string | null
+          created_at: string
+          duration_seconds: number | null
+          gaze_events: Json | null
+          id: string
+          interview_type: string
+          recording_url: string | null
+          resume_analysis: Json | null
+          resume_url: string | null
+          started_at: string | null
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          behavior_flags?: Json | null
+          completed_at?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          gaze_events?: Json | null
+          id?: string
+          interview_type: string
+          recording_url?: string | null
+          resume_analysis?: Json | null
+          resume_url?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          behavior_flags?: Json | null
+          completed_at?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          gaze_events?: Json | null
+          id?: string
+          interview_type?: string
+          recording_url?: string | null
+          resume_analysis?: Json | null
+          resume_url?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
