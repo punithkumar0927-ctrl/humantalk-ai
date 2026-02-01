@@ -33,14 +33,9 @@ const Header = () => {
             </a>
           </nav>
 
-          {/* Desktop CTA */}
+          {/* Desktop CTA - Removed per design */}
           <div className="hidden md:flex items-center gap-3">
-            <Button variant="ghost" size="sm">
-              Sign In
-            </Button>
-            <Button variant="default" size="sm">
-              Get Started
-            </Button>
+            {/* CTAs removed for minimalist header */}
           </div>
 
           {/* Mobile menu button */}
@@ -73,14 +68,7 @@ const Header = () => {
             <a href="#about" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors">
               About
             </a>
-            <div className="flex gap-2 mt-2 px-4">
-              <Button variant="ghost" size="sm" className="flex-1">
-                Sign In
-              </Button>
-              <Button variant="default" size="sm" className="flex-1">
-                Get Started
-              </Button>
-            </div>
+            {/* Mobile CTAs removed for minimalist header */}
           </nav>
         </div>
       </div>
