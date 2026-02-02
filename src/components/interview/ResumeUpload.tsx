@@ -17,14 +17,16 @@ export interface ResumeAnalysis {
   summary: string;
 }
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 const ALLOWED_TYPES = [
   "application/pdf",
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "text/plain",
   "image/png",
   "image/jpeg",
   "image/jpg",
+  "image/webp",
 ];
 
 const ResumeUpload = ({ onResumeAnalyzed }: ResumeUploadProps) => {
@@ -40,7 +42,7 @@ const ResumeUpload = ({ onResumeAnalyzed }: ResumeUploadProps) => {
       return "Please upload a PDF, Word document, or image file.";
     }
     if (file.size > MAX_FILE_SIZE) {
-      return `File size must be less than 50MB. Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB.`;
+      return `File size must be less than 100MB. Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB.`;
     }
     return null;
   };
@@ -212,7 +214,7 @@ const ResumeUpload = ({ onResumeAnalyzed }: ResumeUploadProps) => {
                 {error || "Drop your resume here"}
               </p>
               <p className="text-sm text-muted-foreground">
-                PDF, Word, or image files up to 50MB
+                PDF, Word, or image files up to 100MB
               </p>
             </div>
           </>
@@ -220,7 +222,7 @@ const ResumeUpload = ({ onResumeAnalyzed }: ResumeUploadProps) => {
 
         <input
           type="file"
-          accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+          accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp"
           onChange={handleFileInput}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
           disabled={isUploading || isAnalyzing}
@@ -233,12 +235,12 @@ const ResumeUpload = ({ onResumeAnalyzed }: ResumeUploadProps) => {
             <label className="cursor-pointer">
               <FileText className="w-4 h-4" />
               Browse Files
-              <input
-                type="file"
-                accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
-                onChange={handleFileInput}
-                className="hidden"
-              />
+            <input
+              type="file"
+              accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp"
+              onChange={handleFileInput}
+              className="hidden"
+            />
             </label>
           </Button>
         </div>
