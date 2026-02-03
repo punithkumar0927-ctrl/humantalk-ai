@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
-import { Video, Mic, MicOff, VideoOff, Send, RotateCcw, Loader2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Video, Mic, MicOff, VideoOff, Send, RotateCcw, Loader2, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import ResumeUpload, { ResumeAnalysis } from "@/components/interview/ResumeUpload";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
+import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 
 type InterviewStage = "upload" | "interview" | "complete";
 
@@ -37,6 +38,8 @@ const InterviewRoom = () => {
   const [isMicOn, setIsMicOn] = useState(true);
   const [isVideoOn, setIsVideoOn] = useState(true);
   const [isInterviewerTyping, setIsInterviewerTyping] = useState(false);
+  const [isTTSEnabled, setIsTTSEnabled] = useState(true);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const {
     transcript,
@@ -47,6 +50,30 @@ const InterviewRoom = () => {
     isSupported,
     error: speechError,
   } = useSpeechRecognition();
+
+  const { speak, stop: stopSpeaking, isSpeaking, isSupported: isTTSSupported } = useTextToSpeech({
+    rate: 0.95,
+    pitch: 1.0,
+  });
+
+  // Speak interviewer messages when TTS is enabled
+  const speakMessage = async (text: string) => {
+    if (isTTSEnabled && isTTSSupported) {
+      // Stop listening while speaking to avoid feedback
+      if (isListening) {
+        stopListening();
+      }
+      try {
+        await speak(text);
+        // Resume listening after speaking if mic is on
+        if (isMicOn) {
+          startListening();
+        }
+      } catch (error) {
+        console.error("TTS error:", error);
+      }
+    }
+  };
 
   // Update candidate response with speech transcript
   useEffect(() => {
@@ -68,18 +95,20 @@ const InterviewRoom = () => {
     
     // Add initial greeting from interviewer
     setTimeout(() => {
+      const greetingText = `Hello ${analysis.name}! I'm Alex, your interviewer today. I've reviewed your resume and I'm excited to learn more about your experience with ${analysis.skills.slice(0, 3).join(", ")}. Let's get started!`;
       const greeting: Message = {
         id: Date.now().toString(),
         role: "interviewer",
-        content: `Hello ${analysis.name}! I'm Alex, your interviewer today. I've reviewed your resume and I'm excited to learn more about your experience with ${analysis.skills.slice(0, 3).join(", ")}. Let's get started!`,
+        content: greetingText,
         timestamp: new Date(),
       };
       setMessages([greeting]);
+      speakMessage(greetingText);
       
       // Ask first question after greeting
       setTimeout(() => {
         askNextQuestion(questions);
-      }, 2000);
+      }, isTTSEnabled ? 4000 : 2000); // Wait longer if TTS is enabled
     }, 1000);
   };
 
@@ -92,15 +121,17 @@ const InterviewRoom = () => {
     setIsInterviewerTyping(true);
     
     setTimeout(() => {
+      const questionText = questions[currentQuestionIndex];
       const question: Message = {
         id: Date.now().toString(),
         role: "interviewer",
-        content: questions[currentQuestionIndex],
+        content: questionText,
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, question]);
       setCurrentQuestionIndex((prev) => prev + 1);
       setIsInterviewerTyping(false);
+      speakMessage(questionText);
     }, 1500);
   };
 
@@ -138,25 +169,39 @@ const InterviewRoom = () => {
 
   const endInterview = () => {
     setIsProcessing(true);
+    stopSpeaking(); // Stop any ongoing TTS
     
     setTimeout(() => {
+      const closingText = "Thank you for your time today! Your responses have been recorded and will be reviewed by our HR team. You'll receive feedback within 48 hours. Best of luck!";
       const closingMessage: Message = {
         id: Date.now().toString(),
         role: "interviewer",
-        content: "Thank you for your time today! Your responses have been recorded and will be reviewed by our HR team. You'll receive feedback within 48 hours. Best of luck!",
+        content: closingText,
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, closingMessage]);
       setIsProcessing(false);
       setStage("complete");
+      speakMessage(closingText);
       toast.success("Interview completed! Your report is being generated.");
     }, 2000);
+  };
+
+  const toggleTTS = () => {
+    if (isSpeaking) {
+      stopSpeaking();
+    }
+    setIsTTSEnabled(!isTTSEnabled);
+    toast.success(isTTSEnabled ? "Voice disabled" : "Voice enabled");
   };
 
   const toggleMic = () => {
     if (isMicOn) {
       stopListening();
     } else {
+      if (isSpeaking) {
+        stopSpeaking();
+      }
       startListening();
     }
     setIsMicOn(!isMicOn);
@@ -261,12 +306,29 @@ const InterviewRoom = () => {
               >
                 {isVideoOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
               </Button>
+              {isTTSSupported && (
+                <Button
+                  variant={isTTSEnabled ? "secondary" : "outline"}
+                  size="lg"
+                  className="rounded-full w-14 h-14"
+                  onClick={toggleTTS}
+                  title={isTTSEnabled ? "Mute interviewer voice" : "Enable interviewer voice"}
+                >
+                  {isTTSEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                </Button>
+              )}
             </div>
           </div>
 
           {/* Chat/Response area */}
           <div className="flex flex-col bg-card rounded-2xl border border-border shadow-soft overflow-hidden">
-            {/* Messages */}
+            {/* Speaking indicator */}
+            {isSpeaking && (
+              <div className="px-4 py-2 bg-primary/10 border-b border-border flex items-center gap-2">
+                <Volume2 className="w-4 h-4 text-primary animate-pulse" />
+                <span className="text-xs text-primary font-medium">Alex is speaking...</span>
+              </div>
+            )}
             <div className="flex-1 p-4 overflow-y-auto space-y-4 max-h-[400px]">
               {messages.map((msg) => (
                 <div
