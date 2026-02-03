@@ -16,7 +16,8 @@ interface Message {
   timestamp: Date;
 }
 
-const SAMPLE_QUESTIONS = [
+// Default fallback questions if AI doesn't provide any
+const DEFAULT_QUESTIONS = [
   "Tell me about yourself and your background.",
   "What interests you about this position?",
   "Describe a challenging project you've worked on.",
@@ -28,6 +29,7 @@ const SAMPLE_QUESTIONS = [
 const InterviewRoom = () => {
   const [stage, setStage] = useState<InterviewStage>("upload");
   const [resumeAnalysis, setResumeAnalysis] = useState<ResumeAnalysis | null>(null);
+  const [interviewQuestions, setInterviewQuestions] = useState<string[]>(DEFAULT_QUESTIONS);
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [candidateResponse, setCandidateResponse] = useState("");
@@ -55,6 +57,13 @@ const InterviewRoom = () => {
 
   const handleResumeAnalyzed = (analysis: ResumeAnalysis) => {
     setResumeAnalysis(analysis);
+    
+    // Use dynamic questions from AI analysis, or fallback to defaults
+    const questions = analysis.dynamicQuestions?.length >= 6 
+      ? analysis.dynamicQuestions 
+      : DEFAULT_QUESTIONS;
+    setInterviewQuestions(questions);
+    
     setStage("interview");
     
     // Add initial greeting from interviewer
@@ -69,13 +78,13 @@ const InterviewRoom = () => {
       
       // Ask first question after greeting
       setTimeout(() => {
-        askNextQuestion();
+        askNextQuestion(questions);
       }, 2000);
     }, 1000);
   };
 
-  const askNextQuestion = () => {
-    if (currentQuestionIndex >= SAMPLE_QUESTIONS.length) {
+  const askNextQuestion = (questions: string[] = interviewQuestions) => {
+    if (currentQuestionIndex >= questions.length) {
       endInterview();
       return;
     }
@@ -86,7 +95,7 @@ const InterviewRoom = () => {
       const question: Message = {
         id: Date.now().toString(),
         role: "interviewer",
-        content: SAMPLE_QUESTIONS[currentQuestionIndex],
+        content: questions[currentQuestionIndex],
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, question]);
@@ -94,6 +103,7 @@ const InterviewRoom = () => {
       setIsInterviewerTyping(false);
     }, 1500);
   };
+
 
   const handleSubmitResponse = () => {
     if (!candidateResponse.trim()) {
@@ -118,7 +128,7 @@ const InterviewRoom = () => {
     resetTranscript();
 
     // Check if interview is complete
-    if (currentQuestionIndex >= SAMPLE_QUESTIONS.length) {
+    if (currentQuestionIndex >= interviewQuestions.length) {
       endInterview();
     } else {
       // Ask next question
@@ -190,7 +200,7 @@ const InterviewRoom = () => {
             </span>
           </div>
           <div className="text-sm text-muted-foreground">
-            Question {Math.min(currentQuestionIndex, SAMPLE_QUESTIONS.length)} of {SAMPLE_QUESTIONS.length}
+            Question {Math.min(currentQuestionIndex, interviewQuestions.length)} of {interviewQuestions.length}
           </div>
         </div>
       </header>
