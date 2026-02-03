@@ -15,6 +15,7 @@ export interface ResumeAnalysis {
   experience: string[];
   education: string[];
   summary: string;
+  dynamicQuestions: string[];
 }
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
@@ -120,24 +121,61 @@ const ResumeUpload = ({ onResumeAnalyzed }: ResumeUploadProps) => {
       setIsUploading(false);
       setIsAnalyzing(true);
 
-      // Simulate AI analysis (in production, this would call an edge function)
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Get the public URL for the uploaded file
+      const { data: urlData } = supabase.storage
+        .from("resumes")
+        .getPublicUrl(fileName);
 
-      // Mock analysis result
-      const mockAnalysis: ResumeAnalysis = {
-        name: "Candidate",
-        skills: ["JavaScript", "React", "Node.js", "Python", "SQL"],
-        experience: [
-          "3 years as Software Developer at Tech Corp",
-          "2 years as Junior Developer at StartupXYZ",
-        ],
-        education: ["Bachelor's in Computer Science"],
-        summary: "Experienced software developer with strong full-stack skills and a passion for building scalable applications.",
-      };
+      // Read the file content for text-based files
+      let resumeText = "";
+      
+      if (selectedFile.type === "text/plain") {
+        resumeText = await selectedFile.text();
+      } else if (selectedFile.type === "application/pdf" || 
+                 selectedFile.type.startsWith("application/") ||
+                 selectedFile.type.startsWith("image/")) {
+        // For PDFs, Word docs, and images, we'll send a description and let AI work with what it can
+        resumeText = `File: ${selectedFile.name}\nType: ${selectedFile.type}\nSize: ${(selectedFile.size / 1024).toFixed(1)}KB\n\nNote: This is a ${selectedFile.type} file. Please analyze based on the file name and any available context. If this is an image-based resume, extract visible text and information.`;
+        
+        // For text extraction, convert file to base64 for image processing
+        if (selectedFile.type.startsWith("image/")) {
+          const arrayBuffer = await selectedFile.arrayBuffer();
+          const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+          resumeText = `This is an image-based resume. File: ${selectedFile.name}\n\nBase64 image data is available for OCR processing. Please extract and analyze any visible text, skills, experience, and qualifications from this resume image.`;
+        }
+      }
+
+      // Call the AI analysis edge function
+      const analysisResponse = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-resume`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            resumeText,
+            fileName: selectedFile.name,
+            fileUrl: urlData?.publicUrl,
+          }),
+        }
+      );
+
+      if (!analysisResponse.ok) {
+        const errorData = await analysisResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to analyze resume");
+      }
+
+      const analysisData = await analysisResponse.json();
+      
+      if (!analysisData.success || !analysisData.analysis) {
+        throw new Error(analysisData.error || "Failed to analyze resume");
+      }
 
       setIsAnalyzing(false);
       toast.success("Resume analyzed! Starting your interview...");
-      onResumeAnalyzed(mockAnalysis);
+      onResumeAnalyzed(analysisData.analysis);
     } catch (err: any) {
       setIsUploading(false);
       setIsAnalyzing(false);
@@ -148,6 +186,8 @@ const ResumeUpload = ({ onResumeAnalyzed }: ResumeUploadProps) => {
         errorMessage = "File is too large. Please use a smaller file.";
       } else if (err.message?.includes("504") || err.message?.includes("timeout")) {
         errorMessage = "Upload timed out. Please try again with a smaller file.";
+      } else if (err.message) {
+        errorMessage = err.message;
       }
       
       setError(errorMessage);
