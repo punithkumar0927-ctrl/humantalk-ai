@@ -1,12 +1,17 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { Video, Mic, MicOff, VideoOff, Send, RotateCcw, Loader2, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import ResumeUpload, { ResumeAnalysis } from "@/components/interview/ResumeUpload";
+import BehaviorMonitor from "@/components/interview/BehaviorMonitor";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
+import { useGazeTracking } from "@/hooks/useGazeTracking";
+import { useTabVisibility } from "@/hooks/useTabVisibility";
+import { supabase } from "@/integrations/supabase/client";
 
 type InterviewStage = "upload" | "interview" | "complete";
 
@@ -28,6 +33,7 @@ const DEFAULT_QUESTIONS = [
 ];
 
 const InterviewRoom = () => {
+  const navigate = useNavigate();
   const [stage, setStage] = useState<InterviewStage>("upload");
   const [resumeAnalysis, setResumeAnalysis] = useState<ResumeAnalysis | null>(null);
   const [interviewQuestions, setInterviewQuestions] = useState<string[]>(DEFAULT_QUESTIONS);
@@ -39,6 +45,8 @@ const InterviewRoom = () => {
   const [isVideoOn, setIsVideoOn] = useState(true);
   const [isInterviewerTyping, setIsInterviewerTyping] = useState(false);
   const [isTTSEnabled, setIsTTSEnabled] = useState(true);
+  const [interviewId, setInterviewId] = useState<string | null>(null);
+  const [interviewStartTime, setInterviewStartTime] = useState<Date | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -54,6 +62,31 @@ const InterviewRoom = () => {
   const { speak, stop: stopSpeaking, isSpeaking, isSupported: isTTSSupported } = useTextToSpeech({
     rate: 0.95,
     pitch: 1.0,
+  });
+
+  // Behavioral monitoring
+  const {
+    isTracking,
+    faceDetected,
+    gazeDeviationCount,
+    gazeEvents,
+    startTracking,
+    stopTracking,
+  } = useGazeTracking({
+    onGazeDeviation: (event) => {
+      console.log("Gaze deviation:", event);
+    },
+  });
+
+  const {
+    isVisible,
+    tabSwitchCount,
+    totalHiddenTime,
+    tabEvents,
+  } = useTabVisibility({
+    onTabSwitch: (event) => {
+      console.log("Tab event:", event);
+    },
   });
 
   // Speak interviewer messages when TTS is enabled
@@ -75,6 +108,20 @@ const InterviewRoom = () => {
     }
   };
 
+  // Start behavioral tracking when interview begins
+  useEffect(() => {
+    if (stage === "interview") {
+      startTracking();
+      setInterviewStartTime(new Date());
+    } else if (stage === "complete") {
+      stopTracking();
+    }
+    
+    return () => {
+      stopTracking();
+    };
+  }, [stage, startTracking, stopTracking]);
+
   // Update candidate response with speech transcript
   useEffect(() => {
     if (transcript.trim()) {
@@ -82,7 +129,7 @@ const InterviewRoom = () => {
     }
   }, [transcript]);
 
-  const handleResumeAnalyzed = (analysis: ResumeAnalysis) => {
+  const handleResumeAnalyzed = async (analysis: ResumeAnalysis) => {
     setResumeAnalysis(analysis);
     
     // Use dynamic questions from AI analysis, or fallback to defaults
@@ -90,6 +137,28 @@ const InterviewRoom = () => {
       ? analysis.dynamicQuestions 
       : DEFAULT_QUESTIONS;
     setInterviewQuestions(questions);
+    
+    // Create interview record in database
+    try {
+      const { data: interviewData, error } = await supabase
+        .from("interviews")
+        .insert({
+          interview_type: "practice",
+          status: "in_progress",
+          resume_analysis: analysis as any,
+          started_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+      
+      if (error) {
+        console.error("Error creating interview:", error);
+      } else if (interviewData) {
+        setInterviewId(interviewData.id);
+      }
+    } catch (err) {
+      console.error("Failed to create interview record:", err);
+    }
     
     setStage("interview");
     
@@ -167,9 +236,46 @@ const InterviewRoom = () => {
     }
   };
 
-  const endInterview = () => {
+  const endInterview = async () => {
     setIsProcessing(true);
     stopSpeaking(); // Stop any ongoing TTS
+    stopTracking(); // Stop behavioral monitoring
+    
+    // Save interview data with behavioral metrics
+    if (interviewId) {
+      try {
+        const duration = interviewStartTime 
+          ? Math.floor((Date.now() - interviewStartTime.getTime()) / 1000)
+          : null;
+
+        await supabase
+          .from("interviews")
+          .update({
+            status: "completed",
+            completed_at: new Date().toISOString(),
+            duration_seconds: duration,
+            gaze_events: gazeEvents as any,
+            behavior_flags: {
+              tabSwitchCount,
+              totalHiddenTime,
+              gazeDeviationCount,
+            } as any,
+          })
+          .eq("id", interviewId);
+
+        // Save messages
+        const messagesToSave = messages.map((m) => ({
+          interview_id: interviewId,
+          role: m.role,
+          content: m.content,
+          timestamp: m.timestamp.toISOString(),
+        }));
+
+        await supabase.from("interview_messages").insert(messagesToSave);
+      } catch (err) {
+        console.error("Failed to save interview data:", err);
+      }
+    }
     
     setTimeout(() => {
       const closingText = "Thank you for your time today! Your responses have been recorded and will be reviewed by our HR team. You'll receive feedback within 48 hours. Best of luck!";
@@ -243,6 +349,16 @@ const InterviewRoom = () => {
             <span className="text-sm font-medium">
               {stage === "complete" ? "Interview Complete" : "Interview in Progress"}
             </span>
+            {/* Behavior Monitor */}
+            {stage === "interview" && (
+              <BehaviorMonitor
+                isActive={isTracking}
+                faceDetected={faceDetected}
+                isVisible={isVisible}
+                gazeDeviationCount={gazeDeviationCount}
+                tabSwitchCount={tabSwitchCount}
+              />
+            )}
           </div>
           <div className="text-sm text-muted-foreground">
             Question {Math.min(currentQuestionIndex, interviewQuestions.length)} of {interviewQuestions.length}
@@ -410,13 +526,20 @@ const InterviewRoom = () => {
             )}
 
             {stage === "complete" && (
-              <div className="p-4 border-t border-border text-center">
-                <p className="text-sm text-muted-foreground mb-3">
+              <div className="p-4 border-t border-border text-center space-y-3">
+                <p className="text-sm text-muted-foreground">
                   Your interview has been recorded and submitted.
                 </p>
-                <Button onClick={() => window.location.href = "/"}>
-                  Return Home
-                </Button>
+                <div className="flex flex-col gap-2">
+                  {interviewId && (
+                    <Button onClick={() => navigate(`/interview/report/${interviewId}`)}>
+                      View Report
+                    </Button>
+                  )}
+                  <Button variant="outline" onClick={() => navigate("/")}>
+                    Return Home
+                  </Button>
+                </div>
               </div>
             )}
           </div>
