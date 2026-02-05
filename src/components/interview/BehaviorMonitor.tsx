@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Eye, AlertTriangle, MonitorOff } from "lucide-react";
+import { Eye, AlertTriangle, MonitorOff, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -9,6 +9,8 @@ interface BehaviorMonitorProps {
   isVisible: boolean;
   gazeDeviationCount: number;
   tabSwitchCount: number;
+  multipleFaces?: boolean;
+  lookingAtScreen?: boolean;
   className?: string;
 }
 
@@ -18,6 +20,8 @@ const BehaviorMonitor = ({
   isVisible,
   gazeDeviationCount,
   tabSwitchCount,
+  multipleFaces = false,
+  lookingAtScreen = true,
   className,
 }: BehaviorMonitorProps) => {
   // Show warnings for behavioral issues
@@ -35,6 +39,17 @@ const BehaviorMonitor = ({
   useEffect(() => {
     if (!isActive) return;
 
+    if (multipleFaces) {
+      toast.error("Multiple faces detected - please ensure you are alone", {
+        id: "multi-face-warning",
+        duration: 3000,
+      });
+    }
+  }, [multipleFaces, isActive]);
+
+  useEffect(() => {
+    if (!isActive) return;
+
     if (!isVisible) {
       toast.warning("Please stay on this tab during the interview", {
         id: "tab-warning",
@@ -45,7 +60,7 @@ const BehaviorMonitor = ({
 
   if (!isActive) return null;
 
-  const hasIssues = !faceDetected || !isVisible || gazeDeviationCount > 3 || tabSwitchCount > 2;
+  const hasIssues = !faceDetected || !isVisible || gazeDeviationCount > 3 || tabSwitchCount > 2 || multipleFaces || !lookingAtScreen;
 
   return (
     <div
@@ -60,9 +75,9 @@ const BehaviorMonitor = ({
       <div className="flex items-center gap-4">
         {/* Face Detection Status */}
         <div className="flex items-center gap-1.5">
-          <Eye className={cn("w-3.5 h-3.5", faceDetected ? "text-success" : "text-warning")} />
+          <Eye className={cn("w-3.5 h-3.5", faceDetected && !multipleFaces ? "text-success" : "text-warning")} />
           <span className={faceDetected ? "text-success" : "text-warning"}>
-            {faceDetected ? "Face visible" : "Face not detected"}
+            {!faceDetected ? "Face not detected" : multipleFaces ? "Multiple faces!" : lookingAtScreen ? "Eyes on screen" : "Look at screen"}
           </span>
         </div>
 
@@ -73,6 +88,14 @@ const BehaviorMonitor = ({
             {isVisible ? "Focused" : "Tab switched"}
           </span>
         </div>
+
+        {/* Multiple Faces Warning */}
+        {multipleFaces && (
+          <div className="flex items-center gap-1.5 text-destructive">
+            <Users className="w-3.5 h-3.5" />
+            <span>Multiple faces</span>
+          </div>
+        )}
 
         {/* Warning Indicators */}
         {(gazeDeviationCount > 3 || tabSwitchCount > 2) && (

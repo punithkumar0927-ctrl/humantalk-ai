@@ -1,15 +1,16 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Video, Mic, MicOff, VideoOff, Send, RotateCcw, Loader2, Volume2, VolumeX } from "lucide-react";
+import { Video, Mic, MicOff, VideoOff, Send, RotateCcw, Loader2, Volume2, VolumeX, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import ResumeUpload, { ResumeAnalysis } from "@/components/interview/ResumeUpload";
 import BehaviorMonitor from "@/components/interview/BehaviorMonitor";
+import CandidateWebcam from "@/components/interview/CandidateWebcam";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
-import { useGazeTracking } from "@/hooks/useGazeTracking";
+import { useFaceApiTracking } from "@/hooks/useFaceApiTracking";
 import { useTabVisibility } from "@/hooks/useTabVisibility";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -47,6 +48,7 @@ const InterviewRoom = () => {
   const [isTTSEnabled, setIsTTSEnabled] = useState(true);
   const [interviewId, setInterviewId] = useState<string | null>(null);
   const [interviewStartTime, setInterviewStartTime] = useState<Date | null>(null);
+  const [webcamStream, setWebcamStream] = useState<MediaStream | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -68,13 +70,25 @@ const InterviewRoom = () => {
   const {
     isTracking,
     faceDetected,
+    multipleFaces,
     gazeDeviationCount,
     gazeEvents,
+    dominantExpression,
+    lookingAtScreen,
+    eyesOpen,
+    currentExpression,
+    isModelLoaded,
     startTracking,
     stopTracking,
-  } = useGazeTracking({
+  } = useFaceApiTracking({
     onGazeDeviation: (event) => {
       console.log("Gaze deviation:", event);
+      // Show toast for important events
+      if (event.type === "multiple_faces") {
+        toast.warning("Multiple faces detected", { id: "multi-face" });
+      } else if (event.type === "looking_away") {
+        toast.warning("Please look at the screen", { id: "looking-away" });
+      }
     },
   });
 
@@ -108,17 +122,26 @@ const InterviewRoom = () => {
     }
   };
 
-  // Start behavioral tracking when interview begins
+  // Start behavioral tracking when interview begins  
   useEffect(() => {
-    if (stage === "interview") {
-      startTracking();
-      setInterviewStartTime(new Date());
-    } else if (stage === "complete") {
-      stopTracking();
-    }
+    const initTracking = async () => {
+      if (stage === "interview") {
+        const stream = await startTracking();
+        if (stream) {
+          setWebcamStream(stream);
+        }
+        setInterviewStartTime(new Date());
+      } else if (stage === "complete") {
+        stopTracking();
+        setWebcamStream(null);
+      }
+    };
+    
+    initTracking();
     
     return () => {
       stopTracking();
+      setWebcamStream(null);
     };
   }, [stage, startTracking, stopTracking]);
 
@@ -259,6 +282,10 @@ const InterviewRoom = () => {
               tabSwitchCount,
               totalHiddenTime,
               gazeDeviationCount,
+              multipleFacesDetected: gazeEvents.some((e: any) => e.type === "multiple_faces"),
+              eyesClosedEvents: gazeEvents.filter((e: any) => e.type === "eyes_closed").length,
+              lookingAwayEvents: gazeEvents.filter((e: any) => e.type === "looking_away").length,
+              suspiciousExpressions: gazeEvents.filter((e: any) => e.type === "suspicious_expression").length,
             } as any,
           })
           .eq("id", interviewId);
@@ -361,6 +388,19 @@ const InterviewRoom = () => {
             )}
           </div>
           <div className="text-sm text-muted-foreground">
+            {isModelLoaded ? (
+              <span className="flex items-center gap-1.5">
+                <Eye className="w-3.5 h-3.5 text-success" />
+                <span>Eye tracking active</span>
+                <span className="mx-2">•</span>
+              </span>
+            ) : stage === "interview" ? (
+              <span className="flex items-center gap-1.5">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Loading face detection...</span>
+                <span className="mx-2">•</span>
+              </span>
+            ) : null}
             Question {Math.min(currentQuestionIndex, interviewQuestions.length)} of {interviewQuestions.length}
           </div>
         </div>
@@ -391,17 +431,16 @@ const InterviewRoom = () => {
                 </div>
               </div>
 
-              {/* Candidate video (small overlay) */}
-              <div className="absolute bottom-4 right-4 w-32 h-24 rounded-lg bg-card/80 border border-border shadow-soft flex items-center justify-center">
-                <div className="text-center">
-                  <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center mx-auto">
-                    <span className="text-xs font-semibold">You</span>
-                  </div>
-                  {isListening && (
-                    <span className="text-[10px] text-success mt-1 block">Listening...</span>
-                  )}
-                </div>
-              </div>
+              {/* Candidate video (small overlay) with real webcam */}
+              <CandidateWebcam
+                stream={webcamStream}
+                isListening={isListening}
+                faceDetected={faceDetected}
+                lookingAtScreen={lookingAtScreen}
+                eyesOpen={eyesOpen}
+                dominantExpression={dominantExpression}
+                className="absolute bottom-4 right-4 w-40 h-32 shadow-soft"
+              />
             </div>
 
             {/* Controls */}
