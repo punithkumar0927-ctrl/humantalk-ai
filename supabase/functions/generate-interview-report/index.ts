@@ -217,6 +217,34 @@ Be constructive and fair in your evaluation. Focus on specific examples from the
       })
       .eq("id", interviewId);
 
+    // Send HR notification for passed candidates
+    if (reportData.passed_to_hr) {
+      try {
+        const projectUrl = Deno.env.get("SUPABASE_URL")?.replace(".supabase.co", ".lovable.app") || "";
+        const reportUrl = `${projectUrl}/interview/report/${interviewId}`;
+        
+        await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-hr-notification`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
+          },
+          body: JSON.stringify({
+            interviewId,
+            candidateName: resumeAnalysis.name || "Unknown Candidate",
+            candidateEmail: resumeAnalysis.email,
+            overallScore: evaluation.overall_score,
+            recommendation: evaluation.recommendation,
+            reportUrl,
+          }),
+        });
+        console.log("HR notification triggered");
+      } catch (notifyError) {
+        console.error("Failed to send HR notification:", notifyError);
+        // Don't fail the whole request if notification fails
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,

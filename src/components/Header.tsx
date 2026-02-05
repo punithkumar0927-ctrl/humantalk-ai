@@ -1,10 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
@@ -31,11 +33,16 @@ const Header = () => {
             <a href="#about" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               About
             </a>
+            <a href="/hr" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              HR Dashboard
+            </a>
           </nav>
 
-          {/* Desktop CTA - Removed per design */}
+          {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-3">
-            {/* CTAs removed for minimalist header */}
+            <Button variant="outline" size="sm" onClick={() => navigate("/hr")}>
+              HR Login
+            </Button>
           </div>
 
           {/* Mobile menu button */}
@@ -68,7 +75,9 @@ const Header = () => {
             <a href="#about" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors">
               About
             </a>
-            {/* Mobile CTAs removed for minimalist header */}
+            <a href="/hr" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors">
+              HR Dashboard
+            </a>
           </nav>
         </div>
       </div>
