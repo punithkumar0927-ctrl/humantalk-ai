@@ -114,7 +114,7 @@ Please evaluate the candidate and provide a JSON response with the following str
 
 Be constructive and fair in your evaluation. Focus on specific examples from the transcript.`;
 
-    const aiResponse = await fetch("https://api.lovable.dev/v1/chat/completions", {
+    const aiResponse = await fetch("https://lovable.dev/api/llm/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

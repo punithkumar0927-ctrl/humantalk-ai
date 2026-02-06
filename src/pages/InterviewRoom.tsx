@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Video, Mic, MicOff, VideoOff, Send, RotateCcw, Loader2, Volume2, VolumeX, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,8 +33,28 @@ const DEFAULT_QUESTIONS = [
   "Do you have any questions for me?",
 ];
 
+// Demo/test mode mock data
+const DEMO_RESUME_ANALYSIS: ResumeAnalysis = {
+  name: "Demo Candidate",
+  skills: ["React", "TypeScript", "Node.js", "PostgreSQL", "AWS"],
+  experience: ["5 years as Full Stack Developer at Tech Corp"],
+  education: ["BS Computer Science"],
+  summary: "Experienced developer with strong technical skills",
+  dynamicQuestions: [
+    "Tell me about your experience with React and TypeScript.",
+    "Describe a challenging project you worked on recently.",
+    "How do you approach debugging complex issues?",
+    "What interests you about this position?",
+    "Where do you see yourself in 5 years?",
+    "Do you have any questions for me?",
+  ],
+};
+
 const InterviewRoom = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isDemo = searchParams.get("demo") === "true";
+  
   const [stage, setStage] = useState<InterviewStage>("upload");
   const [resumeAnalysis, setResumeAnalysis] = useState<ResumeAnalysis | null>(null);
   const [interviewQuestions, setInterviewQuestions] = useState<string[]>(DEFAULT_QUESTIONS);
@@ -50,6 +70,13 @@ const InterviewRoom = () => {
   const [interviewStartTime, setInterviewStartTime] = useState<Date | null>(null);
   const [webcamStream, setWebcamStream] = useState<MediaStream | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-start demo mode if ?demo=true
+  useEffect(() => {
+    if (isDemo && stage === "upload") {
+      handleResumeAnalyzed(DEMO_RESUME_ANALYSIS);
+    }
+  }, [isDemo]);
 
   const {
     transcript,
