@@ -114,7 +114,7 @@ Please evaluate the candidate and provide a JSON response with the following str
 
 Be constructive and fair in your evaluation. Focus on specific examples from the transcript.`;
 
-    const aiResponse = await fetch("https://lovable.dev/api/llm/v1/chat/completions", {
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -174,6 +174,18 @@ Be constructive and fair in your evaluation. Focus on specific examples from the
       };
     }
 
+    // Normalize recommendation to match database constraint
+    const normalizeRecommendation = (rec: string): "pass" | "review" | "fail" => {
+      const lower = (rec || "").toLowerCase();
+      if (lower.includes("recommend") && !lower.includes("not")) return "pass";
+      if (lower.includes("further review") || lower.includes("review needed")) return "review";
+      if (lower.includes("not recommend") || lower.includes("fail")) return "fail";
+      // Default based on score
+      if (evaluation.overall_score >= 70) return "pass";
+      if (evaluation.overall_score >= 50) return "review";
+      return "fail";
+    };
+
     // Create the report
     const reportData = {
       interview_id: interviewId,
@@ -187,7 +199,7 @@ Be constructive and fair in your evaluation. Focus on specific examples from the
       strengths: evaluation.strengths,
       growth_areas: evaluation.growth_areas,
       summary: evaluation.summary,
-      recommendation: evaluation.recommendation,
+      recommendation: normalizeRecommendation(evaluation.recommendation),
       engagement_level: evaluation.engagement_level,
       gaze_deviation_count: Array.isArray(gazeEvents) ? gazeEvents.length : 0,
       consistency_flag: evaluation.consistency_flag,
